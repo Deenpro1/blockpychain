@@ -142,4 +142,4 @@ if __name__ == '__main__':
     if not reward_address:
         print("Es muss eine gültige Adresse eingegeben werden. Starte erneut.")
         sys.exit(1)
-    miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=128)
+    miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=12800000000)
