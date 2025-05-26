@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block Explorer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    .miner-card { min-width: 120px; margin: 0.5rem; }
+    .details { margin-top: 20px; padding: 15px; background: #fff; border: 1px solid #ccc; display: none; }
+    pre { white-space: pre-wrap; word-wrap: break-word; }
+  </style>
+</head>
+<body>
+<div class="container py-4">
+  <h1 class="mb-4 text-center">Blockchain Explorer</h1>
+
+  <!-- Miner-Übersicht -->
+  <div class="mb-4">
+    <h3>Aktive Miner</h3>
+    <div class="d-flex flex-wrap" id="minerList">
+      <!-- Miner werden hier dynamisch eingefügt -->
+    </div>
+  </div>
+
+  <!-- Suchformular für Wallet-Adressen -->
+  <form id="addressForm" class="mb-4 d-flex justify-content-center">
+    <input type="text" id="addressInput" class="form-control w-50" placeholder="Gib eine Wallet-Adresse ein, um deren Balance und Transaktionen zu sehen">
+    <button type="submit" class="btn btn-primary ms-2">Adresse inspizieren</button>
+  </form>
+
+  <!-- Tabelle der Blöcke -->
+  <div class="table-responsive">
+    <table class="table table-striped table-hover" id="blocksTable">
+      <thead class="table-primary">
+        <tr>
+          <th>Index</th>
+          <th>Timestamp</th>
+          <th>Hash (verkürzt)</th>
+        </tr>
+      </thead>
+      <tbody id="blocksBody">
+        <!-- Zeilen werden hier dynamisch eingefügt -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card mb-4" id="latestBlockCard" style="display:none;">
+    <div class="card-body">
+      <h4 class="card-title">Neuester Block</h4>
+      <div id="latestBlockContent"></div>
+    </div>
+  </div>
+
+  <div class="details" id="blockDetails">
+    <h2>Block Details</h2>
+    <pre id="detailsPre"></pre>
+    <button class="btn btn-secondary" onclick="closeDetails()">Schließen</button>
+  </div>
+</div>
+
+<script>
+  // Miner laden
+  async function loadMiners() {
+    try {
+      const response = await fetch("/miners");
+      const miners = await response.json();
+      const minerList = document.getElementById("minerList");
+      minerList.innerHTML = "";
+      if (miners.length === 0) {
+        minerList.innerHTML = "<p>Keine aktiven Miner.</p>";
+      } else {
+        miners.forEach(miner => {
+          const card = document.createElement("div");
+          card.className = "card miner-card shadow-sm";
+          card.innerHTML = `
+            <div class="card-body text-center">
+              <span class="display-6">⛏️</span>
+              <h5 class="card-title mt-2">Miner #${miner}</h5>
+            </div>
+          `;
+          minerList.appendChild(card);
+        });
+      }
+    } catch (error) {
+      console.error("Fehler beim Laden der Miner:", error);
+    }
+  async function loadLatestBlock() {
+  try {
+    const response = await fetch("/latest_block");
+    const block = await response.json();
+    const card = document.getElementById("latestBlockCard");
+    const content = document.getElementById("latestBlockContent");
+    if (block && block.index !== undefined) {
+      card.style.display = "block";
+      content.innerHTML = `
+        <b>Index:</b> ${block.index}<br>
+        <b>Timestamp:</b> ${new Date(block.timestamp * 1000).toLocaleString()}<br>
+        <b>Hash:</b> <span style="font-family:monospace">${block.hash}</span><br>
+        <b>Transaktionen:</b> ${block.transactions.length}
+      `;
+    } else {
+      card.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Fehler beim Laden des neuesten Blocks:", error);
+  }
+}
+
+// Im window.onload und im setInterval ergänzen:
+window.onload = function() {
+  loadBlocks();
+  loadMiners();
+  loadLatestBlock();
+};
+setInterval(loadBlocks, 10000);
+setInterval(loadMiners, 10000);
+setInterval(loadLatestBlock, 10000);
+
+  }
+
+  // Blöcke laden
+  async function loadBlocks() {
+    try {
+      const response = await fetch("/blocks");
+      const blocks = await response.json();
+      const tbody = document.getElementById("blocksBody");
+      tbody.innerHTML = "";
+      blocks.sort((a, b) => b.index - a.index);
+      blocks.forEach(block => {
+        const tr = document.createElement("tr");
+        tr.onclick = () => showDetails(block);
+        const indexTd = document.createElement("td");
+        indexTd.textContent = block.index;
+        const tsTd = document.createElement("td");
+        const ts = new Date(block.timestamp * 1000);
+        tsTd.textContent = ts.toLocaleString();
+        const hashTd = document.createElement("td");
+        hashTd.textContent = block.hash.substring(0, 20) + '...';
+        tr.appendChild(indexTd);
+        tr.appendChild(tsTd);
+        tr.appendChild(hashTd);
+        tbody.appendChild(tr);
+      });
+    } catch (error) {
+      console.error("Fehler beim Laden der Blöcke:", error);
+    }
+  }
+
+  function showDetails(block) {
+    document.getElementById("detailsPre").textContent = JSON.stringify(block, null, 4);
+    document.getElementById("blockDetails").style.display = "block";
+  }
+
+  function closeDetails() {
+    document.getElementById("blockDetails").style.display = "none";
+  }
+
+  document.getElementById("addressForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    const address = document.getElementById("addressInput").value.trim();
+    if (address) {
+      window.location.href = "/address/" + address;
+    }
+  });
+
+  window.onload = function() {
+    loadBlocks();
+    loadMiners();
+  };
+  setInterval(loadBlocks, 10000);
+  setInterval(loadMiners, 10000);
+</script>
+</body>
+</html>
