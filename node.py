@@ -44,26 +44,46 @@ class Blockchain:
             return self.chain[-1]
 
     def add_block(self, block):
-        with self.lock:
-            # Konfliktbehandlung: Nur akzeptieren, wenn previous_hash aktuell ist!
-            if block.previous_hash != self.chain[-1].hash:
-                print("Block abgelehnt: falscher previous_hash (veralteter Block, evtl. Fork)!")
-                return False
-            if block.hash != block.calculate_hash():
-                print("Block abgelehnt: ungültiger Hash!")
-                return False
-            if not block.hash.startswith('0' * self.difficulty):
-                print("Block abgelehnt: Difficulty nicht erfüllt!")
-                return False
-            self.chain.append(block)
-            self.pending_transactions = []
-            print(f"Block {block.index} erfolgreich hinzugefügt. Kettenlänge: {len(self.chain)}")
-            return True
+    with self.lock:
+        if block.previous_hash != self.chain[-1].hash:
+            print("Block abgelehnt: falscher previous_hash (veralteter Block, evtl. Fork)!")
+            return False
+        if block.hash != block.calculate_hash():
+            print("Block abgelehnt: ungültiger Hash!")
+            return False
+        if not block.hash.startswith('0' * self.difficulty):
+            print("Block abgelehnt: Difficulty nicht erfüllt!")
+            return False
+        self.chain.append(block)
+        self.pending_transactions = []
+        print(f"Block {block.index} erfolgreich hinzugefügt. Kettenlänge: {len(self.chain)}")
+        previous_block_time = self.last_block_time
+        self.last_block_time = time.time()
+        self.adjust_difficulty(previous_block_time)
+        return True
+
 
     def add_transaction(self, transaction):
         with self.lock:
             self.pending_transactions.append(transaction)
             print("Transaktion wurde zur Pending-Liste hinzugefügt:", transaction)
+    
+    def adjust_difficulty(self, previous_block_time):
+    if not miner_hashrates:
+        return
+    avg_hashrate = sum(miner_hashrates.values()) / len(miner_hashrates)
+    print(f"Aktuelle durchschnittliche Hashrate: {avg_hashrate:.2f} MH/s")
+    if len(self.chain) > 1:
+        actual_time = self.last_block_time - previous_block_time
+    else:
+        actual_time = TARGET_BLOCK_TIME
+    print(f"Zeit seit letztem Block: {actual_time:.2f} s (Ziel: {TARGET_BLOCK_TIME}s)")
+    if actual_time < TARGET_BLOCK_TIME * 0.8 and self.difficulty < MAX_DIFFICULTY:
+        self.difficulty += 1
+        print(f"Difficulty erhöht auf {self.difficulty}")
+    elif actual_time > TARGET_BLOCK_TIME * 1.2 and self.difficulty > MIN_DIFFICULTY:
+        self.difficulty -= 1
+        print(f"Difficulty verringert auf {self.difficulty}")
 
 def compute_balance(address, blockchain):
     balance = 0.0
