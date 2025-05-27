@@ -223,7 +223,7 @@ def blockchain_server(port, blockchain):
         conn.close()
 
 if __name__ == '__main__':
-    blockchain = Blockchain(difficulty=6)
+    blockchain = Blockchain(difficulty=5)
     server_thread = threading.Thread(target=blockchain_server, args=(5000, blockchain))
     server_thread.daemon = True
     server_thread.start()

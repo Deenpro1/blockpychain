@@ -49,7 +49,6 @@ def get_difficulty_from_server(server_host, server_port):
         print(f"Fehler beim Abrufen der Difficulty vom Server: {e}")
         return 5  # Fallback
 
-
 # Block-Klasse – muss identisch zu der im Node sein!
 class Block:
     def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
@@ -86,17 +85,27 @@ def mine_block(miner_id, block_index, previous_hash, difficulty, reward_address)
     )
     new_block.nonce = random.randint(0, 100000)
     new_block.hash = new_block.calculate_hash()
+    hashes = 0
+    start_time = time.time()
+    last_report = start_time
 
     iteration = 0
     while not new_block.hash.startswith("0" * difficulty):
         new_block.nonce += 1
         new_block.hash = new_block.calculate_hash()
+        hashes += 1
         iteration += 1
-        if iteration % 10000 == 0:
+
+        now = time.time()
+        if now - last_report >= 1.0:
+            mh_s = hashes / 1_000_000 / (now - last_report)
             sys.stdout.write(
-                f"\rMiner {miner_id} - Block {block_index}: Iteration {iteration}, aktueller Nonce: {new_block.nonce}, Hash-Vorschau: {new_block.hash[:20]}..."
+                f"\rMiner {miner_id} - Block {block_index}: Iteration {iteration}, Nonce: {new_block.nonce}, Hashrate: {mh_s:.2f} MH/s, Hash-Vorschau: {new_block.hash[:20]}..."
             )
             sys.stdout.flush()
+            hashes = 0
+            last_report = now
+
     sys.stdout.write("\n")
     print(f"Miner {miner_id} hat Block {block_index} gefunden! (Nonce: {new_block.nonce}, Iterationen: {iteration})")
     return new_block
@@ -130,6 +139,7 @@ def miner(miner_id, server_host, server_port, reward_address, difficulty=4, max_
             client.close()
 
         time.sleep(1)
+
 if __name__ == '__main__':
     server_host = "127.0.0.1"
     server_port = 5000
@@ -142,4 +152,5 @@ if __name__ == '__main__':
     if not reward_address:
         print("Es muss eine gültige Adresse eingegeben werden. Starte erneut.")
         sys.exit(1)
-    miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=12800000000)
+    miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=128)
+
