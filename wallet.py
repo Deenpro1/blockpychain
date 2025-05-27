@@ -4,7 +4,6 @@ import socket
 import sys
 from ecdsa import SigningKey, SECP256k1
 
-# Wallet-Klasse mit der Möglichkeit, einen privaten Schlüssel zu laden
 class Wallet:
     def __init__(self, private_key_hex=None):
         if private_key_hex:
