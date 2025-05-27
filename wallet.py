@@ -17,21 +17,17 @@ class Wallet:
         self.public_key = self.private_key.get_verifying_key()
 
     def get_address(self):
-        """Gibt die Wallet-Adresse (hexadezimale Darstellung des öffentlichen Schlüssels) zurück."""
         return self.public_key.to_string().hex()
 
     def get_private_key(self):
-        """Gibt den privaten Schlüssel als Hexadezimalstring zurück. Bewahre ihn sicher auf!"""
         return self.private_key.to_string().hex()
 
     def sign_transaction(self, transaction: dict) -> str:
-        """Signiert eine Transaktion (als JSON-String) und gibt die Signatur zurück."""
         tx_str = json.dumps(transaction, sort_keys=True)
         signature = self.private_key.sign(tx_str.encode())
         return signature.hex()
 
     def create_transaction(self, recipient: str, amount: float) -> dict:
-        """Erzeugt und signiert eine neue Transfer-Transaktion."""
         transaction = {
             "sender": self.get_address(),
             "recipient": recipient,
