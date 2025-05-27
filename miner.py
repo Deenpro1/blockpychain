@@ -49,6 +49,15 @@ def get_difficulty_from_server(server_host, server_port):
         print(f"Fehler beim Abrufen der Difficulty vom Server: {e}")
         return 5  # Fallback
 
+def report_hashrate_to_server(server_host, server_port, miner_id, hashrate):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((server_host, server_port))
+            msg = f"REPORT_HASHRATE:{miner_id}:{hashrate}"
+            s.sendall(msg.encode())
+    except Exception as e:
+        print(f"Fehler beim Senden der Hashrate an den Server: {e}")
+
 # Block-Klasse – muss identisch zu der im Node sein!
 class Block:
     def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
@@ -100,27 +109,30 @@ def mine_block(miner_id, block_index, previous_hash, difficulty, reward_address)
         if now - last_report >= 1.0:
             mh_s = hashes / 1_000_000 / (now - last_report)
             sys.stdout.write(
-                f"\rMiner {miner_id} - Block {block_index}: Iteration {iteration}, Nonce: {new_block.nonce}, Hashrate: {mh_s:.2f} MH/s, Hash-Vorschau: {new_block.hash[:20]}..."
+                f"\rMiner {miner_id} - Block {block_index} | Difficulty: {difficulty} | Iteration {iteration}, Nonce: {new_block.nonce}, Hashrate: {mh_s:.2f} MH/s, Hash-Vorschau: {new_block.hash[:20]}..."
             )
             sys.stdout.flush()
             hashes = 0
             last_report = now
 
     sys.stdout.write("\n")
-    print(f"Miner {miner_id} hat Block {block_index} gefunden! (Nonce: {new_block.nonce}, Iterationen: {iteration})")
-    return new_block
+    total_time = time.time() - start_time
+    avg_hashrate = iteration / 1_000_000 / total_time if total_time > 0 else 0
+    print(f"Miner {miner_id} hat Block {block_index} gefunden! (Nonce: {new_block.nonce}, Iterationen: {iteration}, Ø Hashrate: {avg_hashrate:.2f} MH/s, Difficulty: {difficulty})")
+    return new_block, avg_hashrate
 
 def miner(miner_id, server_host, server_port, reward_address, difficulty=4, max_blocks=5):
     while True:
         # Immer aktuelle Werte vom Node holen
         current_block_index = get_block_index_from_server(server_host, server_port)
         current_previous_hash = get_prev_hash_from_server(server_host, server_port)
+        difficulty = get_difficulty_from_server(server_host, server_port)
 
         if current_block_index > max_blocks:
             print("Maximale Blockanzahl erreicht. Miner stoppt.")
             break
 
-        new_block = mine_block(miner_id, current_block_index, current_previous_hash, difficulty, reward_address)
+        new_block, avg_hashrate = mine_block(miner_id, current_block_index, current_previous_hash, difficulty, reward_address)
 
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,6 +150,9 @@ def miner(miner_id, server_host, server_port, reward_address, difficulty=4, max_
         finally:
             client.close()
 
+        # Hashrate an Node melden
+        report_hashrate_to_server(server_host, server_port, miner_id, avg_hashrate)
+
         time.sleep(1)
 
 if __name__ == '__main__':
@@ -152,5 +167,7 @@ if __name__ == '__main__':
     if not reward_address:
         print("Es muss eine gültige Adresse eingegeben werden. Starte erneut.")
         sys.exit(1)
+    miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=128)
+
     miner(miner_id, server_host=server_host, server_port=server_port, reward_address=reward_address, difficulty=difficulty, max_blocks=128)
 
