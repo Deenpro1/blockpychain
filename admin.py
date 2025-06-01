@@ -38,7 +38,7 @@ def admin_console():
                 print("Admin-Console exiting...")
                 break
             else:
-                print("Ungültige Aktion.")
+                print("Invalid.")
         except Exception as e:
             print(f"Error in admin console: {e}")
 
