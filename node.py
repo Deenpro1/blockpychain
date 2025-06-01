@@ -333,8 +333,8 @@ def blockchain_server(port, blockchain):
                         conn.sendall(str(blockchain.difficulty).encode())
                         time.sleep(0.1)
 
-                elif data.startswith("GET_MINERS:"):
-                    
+                elif data.startswith("GET_MINERS"):
+                    logging.info(f"GET_MINERS von {addr}")
                     conn.sendall(json.dumps(list(active_miners)).encode())
                     time.sleep(0.1)
 
