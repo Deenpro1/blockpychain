@@ -38,26 +38,14 @@ def get_address_info(address):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((NODE_HOST, NODE_PORT))
-            s.sendall(f"GET_CHAIN:".encode())
+            s.sendall(f"GET_ADDRESS:{address}".encode())
             data = b""
             while True:
                 part = s.recv(4096)
                 if not part:
                     break
                 data += part
-            chain = json.loads(data.decode())
-            balance = 0.0
-            transactions = []
-            for block in chain:
-                for tx in block.get("transactions", []):
-                    if isinstance(tx, dict):
-                        if tx.get("recipient") == address:
-                            balance += float(tx.get("amount", 0))
-                            transactions.append(tx)
-                        elif tx.get("sender") == address:
-                            balance -= float(tx.get("amount", 0))
-                            transactions.append(tx)
-            return {"address": address, "balance": balance, "transactions": transactions}
+            return json.loads(data.decode())
     except Exception as e:
         print("Fehler beim Abrufen der Adressdaten:", e)
         return {"address": address, "balance": 0.0, "transactions": []}

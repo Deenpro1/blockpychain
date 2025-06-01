@@ -387,6 +387,28 @@ def blockchain_server(port, blockchain):
                     except Exception as e:
                         logging.error(f"Error while sending chain: {e}")
 
+                elif data.startswith("GET_ADDRESS:"):
+                    try:
+                        address = data.split(":", 1)[1]
+                        balance = 0.0
+                        transactions = []
+                        with blockchain.lock:
+                            for block in blockchain.chain:
+                                for tx in block.transactions:
+                                    if isinstance(tx, dict):
+                                        if tx.get("recipient") == address:
+                                            balance += float(tx.get("amount", 0))
+                                            transactions.append(tx)
+                                        elif tx.get("sender") == address:
+                                            balance -= float(tx.get("amount", 0))
+                                            transactions.append(tx)
+                        response = json.dumps({"address": address, "balance": balance, "transactions": transactions})
+                        conn.sendall(response.encode())
+                        # Optional: Logging
+                        logging.info(f"GET_ADDRESS für {address} von {addr}")
+                    except Exception as e:
+                        logging.error(f"Error in GET_ADDRESS: {e}")
+
                 elif data.startswith("REPORT_HASHRATE:"):
                     # Format: REPORT_HASHRATE:<miner_id>:<token>:<hashrate>
                     parts = data.strip().split(":")

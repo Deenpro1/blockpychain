@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block Explorer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <!-- Header -->
+  <nav class="navbar navbar-dark bg-dark shadow-sm mb-4">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center" href="/">
+        <i class="fa fa-cube fa-lg me-2 text-primary"></i>
+        <span class="fw-bold">Block Explorer</span>
+      </a>
+      <form id="addressForm" class="d-flex" role="search" autocomplete="off">
+        <input type="text" id="addressInput" class="form-control me-2" placeholder="Wallet-Adresse suchen">
+        <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Statistiken -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="stat-card card shadow-sm text-center">
+          <div class="card-body">
+            <div class="stat-icon bg-primary text-white mb-2"><i class="fa fa-cubes"></i></div>
+            <div class="stat-label">Blöcke</div>
+            <div class="stat-value" id="statBlocks">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="stat-card card shadow-sm text-center">
+          <div class="card-body">
+            <div class="stat-icon bg-success text-white mb-2"><i class="fa fa-users"></i></div>
+            <div class="stat-label">Miner</div>
+            <div class="stat-value" id="statMiners">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="stat-card card shadow-sm text-center">
+          <div class="card-body">
+            <div class="stat-icon bg-warning text-white mb-2"><i class="fa fa-bolt"></i></div>
+            <div class="stat-label">Letzter Block</div>
+            <div class="stat-value" id="statLatestBlock">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Miner-Übersicht -->
+    <div class="mb-4">
+      <h4 class="section-title"><i class="fa fa-users"></i> Aktive Miner</h4>
+      <div class="d-flex flex-wrap gap-3" id="minerList">
+        <!-- Miner werden hier dynamisch eingefügt -->
+      </div>
+    </div>
+
+    <!-- Blöcke -->
+    <div>
+      <h4 class="section-title"><i class="fa fa-cubes"></i> Letzte Blöcke</h4>
+      <div class="row g-3" id="blocksCards">
+        <!-- Block-Karten werden hier dynamisch eingefügt -->
+      </div>
+    </div>
+
+    <!-- Block Details Modal -->
+    <div class="modal fade" id="blockDetailsModal" tabindex="-1" aria-labelledby="blockDetailsLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="blockDetailsLabel">Block Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            <pre id="detailsPre" class="mb-0"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Statistiken aktualisieren
+  async function updateStats(blocks, miners) {
+    document.getElementById("statBlocks").textContent = blocks.length;
+    document.getElementById("statMiners").textContent = miners.length;
+    if (blocks.length > 0) {
+      document.getElementById("statLatestBlock").textContent = "#" + blocks[blocks.length - 1].index;
+    } else {
+      document.getElementById("statLatestBlock").textContent = "-";
+    }
+  }
+
+  // Miner laden
+  async function loadMiners() {
+    try {
+      const response = await fetch("/miners");
+      const miners = await response.json();
+      const minerList = document.getElementById("minerList");
+      minerList.innerHTML = "";
+      if (miners.length === 0) {
+        minerList.innerHTML = "<span class='text-muted'>Keine aktiven Miner.</span>";
+      } else {
+        miners.forEach(miner => {
+          const card = document.createElement("div");
+          card.className = "miner-avatar-card card shadow-sm text-center";
+          card.innerHTML = `
+            <div class="card-body p-2">
+              <div class="miner-avatar mx-auto mb-1"><i class="fa fa-user"></i></div>
+              <div class="miner-id text-truncate">#${miner}</div>
+            </div>
+          `;
+          minerList.appendChild(card);
+        });
+      }
+      return miners;
+    } catch (error) {
+      console.error("Fehler beim Laden der Miner:", error);
+      return [];
+    }
+  }
+
+  // Blöcke laden
+  async function loadBlocks() {
+    try {
+      const response = await fetch("/blocks");
+      const blocks = await response.json();
+      const blocksCards = document.getElementById("blocksCards");
+      blocksCards.innerHTML = "";
+      blocks.sort((a, b) => b.index - a.index);
+      blocks.slice(0, 8).forEach(block => {
+        const col = document.createElement("div");
+        col.className = "col-12 col-md-6 col-lg-4";
+        col.innerHTML = `
+          <div class="block-card card shadow-sm h-100" style="cursor:pointer" data-block='${JSON.stringify(block).replace(/'/g, "&apos;")}'>
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary">#${block.index}</span>
+                <span class="text-muted small">${new Date(block.timestamp * 1000).toLocaleString()}</span>
+              </div>
+              <div class="mb-2">
+                <span class="fw-bold">Hash:</span>
+                <span class="text-monospace small">${block.hash.substring(0, 20)}...</span>
+              </div>
+              <div>
+                <span class="fw-bold">Transaktionen:</span>
+                <span class="badge bg-secondary">${block.transactions.length}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        blocksCards.appendChild(col);
+      });
+      return blocks;
+    } catch (error) {
+      console.error("Fehler beim Laden der Blöcke:", error);
+      return [];
+    }
+  }
+
+  // Block Details Modal
+  document.addEventListener("click", function(e) {
+    const card = e.target.closest(".block-card");
+    if (card) {
+      const block = JSON.parse(card.getAttribute("data-block").replace(/&apos;/g, "'"));
+      document.getElementById("detailsPre").textContent = JSON.stringify(block, null, 2);
+      const modal = new bootstrap.Modal(document.getElementById('blockDetailsModal'));
+      modal.show();
+    }
+  });
+
+  // Suche
+  document.getElementById("addressForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    const address = document.getElementById("addressInput").value.trim();
+    if (address) {
+      window.location.href = "/address/" + address;
+    }
+  });
+
+  // Initiales Laden und Intervall
+  async function refreshAll() {
+    const [blocks, miners] = await Promise.all([loadBlocks(), loadMiners()]);
+    updateStats(blocks, miners);
+  }
+  refreshAll();
+  setInterval(refreshAll, 10000);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
