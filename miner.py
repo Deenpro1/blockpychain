@@ -142,7 +142,7 @@ def mine_block(miner_id, token, block_index, previous_hash, difficulty, reward_a
     logging.info(f"Miner {miner_id} hat Block {block_index} gefunden! (Nonce: {new_block.nonce}, Iterationen: {iteration}, Ø Hashrate: {avg_hashrate:.2f} MH/s, Difficulty: {difficulty})")
     return new_block, avg_hashrate
 
-def miner(miner_id, token, server_host, server_port, reward_address, difficulty=4, max_blocks=5):
+def miner(miner_id, token, server_host, server_port, reward_address, difficulty=4, max_blocks=128):
     while True:
         current_block_index = get_block_index_from_server(server_host, server_port, miner_id, token)
         current_previous_hash = get_prev_hash_from_server(server_host, server_port, miner_id, token)
