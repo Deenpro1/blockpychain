@@ -7,6 +7,10 @@ import uuid
 import os
 import logging
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
+import uuid
+
+ADMIN_PASSWORD = uuid.uuid4().hex
+print(f"Admin-Passwort: {ADMIN_PASSWORD}")
 
 # Logging
 logging.basicConfig(
@@ -271,6 +275,34 @@ def blockchain_server(port, blockchain):
                         logging.error(f"Error while giving MinerID: {e}")
 
                 
+                elif data.startswith("ADMIN_SEND:"):
+                    # Format: ADMIN_SEND:<recipient>:<amount>:<password>
+                    parts = data.strip().split(":")
+                    if len(parts) == 4:
+                        _, recipient, amount, password = parts
+                        if password != ADMIN_PASSWORD:
+                            conn.sendall(b"ADMIN_TX_UNAUTHORIZED")
+                            logging.warning("Admin-Transaction: Invalid Passwort.")
+                            continue
+                        try:
+                            amount = float(amount)
+                            tx = {
+                                "sender": "SYSTEM",
+                                "recipient": recipient,
+                                "amount": amount,
+                                "timestamp": time.time(),
+                                "type": "reward"
+                            }
+                            with blockchain.lock:
+                                blockchain.add_transaction(tx)
+                            conn.sendall(b"ADMIN_TX_ACCEPTED")
+                            logging.info(f"Admin-Transaction: SYSTEM -> {recipient} ({amount})")
+                        except Exception as e:
+                            conn.sendall(b"ADMIN_TX_ERROR")
+                            logging.error(f"Error in ADMIN_SEND: {e}")
+                    else:
+                        conn.sendall(b"ADMIN_TX_ERROR")
+                
                 elif data.startswith("GET_BLOCKINDEX:"):
                     parts = data.strip().split(":")
                     if len(parts) == 3:
@@ -377,51 +409,11 @@ def blockchain_server(port, blockchain):
         except Exception as e:
             logging.error(f"Fehler im Hauptserver-Loop: {e}")
 
-def admin_console(blockchain):
-    print("Admin console running. Send coins with: send <reciever> <amount>")
-    while True:
-        try:
-            cmd = input("admin> ").strip()
-            if cmd.startswith("send "):
-                parts = cmd.split()
-                if len(parts) != 3:
-                    print("Syntax: send <reciever> <amount>")
-                    continue
-                recipient = parts[1]
-                try:
-                    amount = float(parts[2])
-                except Exception:
-                    print("Amount must be a Number.")
-                    continue
-                tx = {
-                    "sender": "SYSTEM",
-                    "recipient": recipient,
-                    "amount": amount,
-                    "timestamp": time.time(),
-                    "type": "reward"
-                }
-                with blockchain.lock:
-                    blockchain.add_transaction(tx)
-                print(f"Transaktion: SYSTEM -> {recipient} ({amount}) wurde hinzugefügt.")
-                logging.info(f"Admin-Transaction: SYSTEM -> {recipient} ({amount})")
-            elif cmd in ("exit", "quit"):
-                print("Admin-Console is shutting down.")
-                break
-            else:
-                print("Invalid action.")
-        except Exception as e:
-            print(f"Error in Admin Console: {e}")
-            logging.error(f"Error in Admin Console: {e}")
-
 if __name__ == '__main__':
     blockchain = Blockchain(difficulty=5)
     server_thread = threading.Thread(target=blockchain_server, args=(5000, blockchain))
     server_thread.daemon = True
     server_thread.start()
-
-    admin_thread = threading.Thread(target=admin_console, args=(blockchain,))
-    admin_thread.daemon = True
-    admin_thread.start()
 
     try:
         while True:
