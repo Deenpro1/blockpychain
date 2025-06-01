@@ -4,7 +4,6 @@ import socket
 import sys
 from ecdsa import SigningKey, SECP256k1
 
-# Wallet for key management and transactions
 class Wallet:
     def __init__(self, private_key_hex=None):
         if private_key_hex:
@@ -18,21 +17,17 @@ class Wallet:
         self.public_key = self.private_key.get_verifying_key()
 
     def get_address(self):
-        # Returns public key as address
         return self.public_key.to_string().hex()
 
     def get_private_key(self):
-        # Returns private key as hex
         return self.private_key.to_string().hex()
 
     def sign_transaction(self, transaction: dict) -> str:
-        # Signs transaction dict
         tx_str = json.dumps(transaction, sort_keys=True)
         signature = self.private_key.sign(tx_str.encode())
         return signature.hex()
 
     def create_transaction(self, recipient: str, amount: float) -> dict:
-        # Creates and signs a transaction
         transaction = {
             "sender": self.get_address(),
             "recipient": recipient,
@@ -44,7 +39,6 @@ class Wallet:
         return transaction
 
 def send_transaction_to_node(transaction: dict, server_host="127.0.0.1", server_port=5000):
-    # Sends transaction to node
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         try:
             client.connect((server_host, server_port))
@@ -55,7 +49,6 @@ def send_transaction_to_node(transaction: dict, server_host="127.0.0.1", server_
             print("Send error:", e)
 
 def get_blockchain_from_node(server_host="127.0.0.1", server_port=5000):
-    # Gets blockchain from node
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         try:
             client.connect((server_host, server_port))
@@ -72,7 +65,6 @@ def get_blockchain_from_node(server_host="127.0.0.1", server_port=5000):
             return []
 
 def compute_balance(chain_data, address):
-    # Calculates balance for address
     balance = 0.0
     for block in chain_data:
         for tx in block.get("transactions", []):
@@ -84,7 +76,6 @@ def compute_balance(chain_data, address):
     return balance
 
 def get_transaction_history(chain_data, address):
-    # Returns all transactions for the address
     history = []
     for block in chain_data:
         for tx in block.get("transactions", []):
@@ -94,7 +85,6 @@ def get_transaction_history(chain_data, address):
     return history
 
 def print_transaction_history(history, my_address):
-    # Prints transaction history in readable format
     if not history:
         print("Couldn´t find any transactions.")
         return
