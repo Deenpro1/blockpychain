@@ -4,35 +4,35 @@ import socket
 import sys
 from ecdsa import SigningKey, SECP256k1
 
-# Wallet-Klasse mit der Möglichkeit, einen privaten Schlüssel zu laden
+# Wallet for key management and transactions
 class Wallet:
     def __init__(self, private_key_hex=None):
         if private_key_hex:
             try:
                 self.private_key = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
             except Exception as e:
-                print("Fehler beim Laden des privaten Schlüssels:", e)
+                print("Key load error:", e)
                 raise
         else:
             self.private_key = SigningKey.generate(curve=SECP256k1)
         self.public_key = self.private_key.get_verifying_key()
 
     def get_address(self):
-        """Gibt die Wallet-Adresse (hexadezimale Darstellung des öffentlichen Schlüssels) zurück."""
+        # Returns public key as address
         return self.public_key.to_string().hex()
 
     def get_private_key(self):
-        """Gibt den privaten Schlüssel als Hexadezimalstring zurück. Bewahre ihn sicher auf!"""
+        # Returns private key as hex
         return self.private_key.to_string().hex()
 
     def sign_transaction(self, transaction: dict) -> str:
-        """Signiert eine Transaktion (als JSON-String) und gibt die Signatur zurück."""
+        # Signs transaction dict
         tx_str = json.dumps(transaction, sort_keys=True)
         signature = self.private_key.sign(tx_str.encode())
         return signature.hex()
 
     def create_transaction(self, recipient: str, amount: float) -> dict:
-        """Erzeugt und signiert eine neue Transfer-Transaktion."""
+        # Creates and signs a transaction
         transaction = {
             "sender": self.get_address(),
             "recipient": recipient,
@@ -44,41 +44,38 @@ class Wallet:
         return transaction
 
 def send_transaction_to_node(transaction: dict, server_host="127.0.0.1", server_port=5000):
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        client.connect((server_host, server_port))
-        tx_data = json.dumps(transaction)
-        client.send(f"NEW_TX:{tx_data}".encode())
-        print("Transaktion erfolgreich an den Node gesendet.")
-    except Exception as e:
-        print("Fehler beim Senden der Transaktion:", e)
-    finally:
-        client.close()
+    # Sends transaction to node
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            client.connect((server_host, server_port))
+            tx_data = json.dumps(transaction)
+            client.send(f"NEW_TX:{tx_data}".encode())
+            print("Transaction sent to node.")
+        except Exception as e:
+            print("Send error:", e)
 
 def get_blockchain_from_node(server_host="127.0.0.1", server_port=5000):
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        client.connect((server_host, server_port))
-        client.send("GET_CHAIN:".encode())
-        response = ""
-        while True:
-            data = client.recv(4096)
-            if not data:
-                break
-            response += data.decode()
-        chain_data = json.loads(response)
-        return chain_data
-    except Exception as e:
-        print("Fehler beim Abrufen der Blockchain:", e)
-        return []
-    finally:
-        client.close()
+    # Gets blockchain from node
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            client.connect((server_host, server_port))
+            client.send("GET_CHAIN:".encode())
+            response = b""
+            while True:
+                data = client.recv(4096)
+                if not data:
+                    break
+                response += data
+            return json.loads(response.decode())
+        except Exception as e:
+            print("Blockchain fetch error:", e)
+            return []
 
 def compute_balance(chain_data, address):
+    # Calculates balance for address
     balance = 0.0
     for block in chain_data:
-        transactions = block.get("transactions", [])
-        for tx in transactions:
+        for tx in block.get("transactions", []):
             if isinstance(tx, dict):
                 if tx.get("recipient") == address:
                     balance += float(tx.get("amount", 0))
@@ -86,64 +83,92 @@ def compute_balance(chain_data, address):
                     balance -= float(tx.get("amount", 0))
     return balance
 
+def get_transaction_history(chain_data, address):
+    # Returns all transactions for the address
+    history = []
+    for block in chain_data:
+        for tx in block.get("transactions", []):
+            if isinstance(tx, dict):
+                if tx.get("sender") == address or tx.get("recipient") == address:
+                    history.append(tx)
+    return history
+
+def print_transaction_history(history, my_address):
+    # Prints transaction history in readable format
+    if not history:
+        print("Couldn´t find any transactions.")
+        return
+    for i, tx in enumerate(history, 1):
+        sender = "My Adress" if tx.get("sender") == my_address else tx.get("sender")
+        recipient = "My Adress" if tx.get("recipient") == my_address else tx.get("recipient")
+        amount = tx.get("amount")
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tx.get("timestamp", 0)))
+        print(f"{i}. {timestamp} | From: {sender} | TO: {recipient} | Amount: {amount}")
+
 def main():
-    print("Willkommen in deiner Wallet!")
-    use_existing = input("Möchtest du einen bestehenden privaten Schlüssel verwenden? (j/n): ").strip().lower()
+    print("Welcome to your Wallet!")
+    use_existing = input("Use existing private key? (j/n): ").strip().lower()
     if use_existing == 'j':
-        private_key_hex = input("Gib deinen privaten Schlüssel (Hex) ein: ").strip()
+        private_key_hex = input("Enter your private key: ").strip()
         try:
             wallet = Wallet(private_key_hex=private_key_hex)
         except Exception:
-            print("Konnte Wallet nicht laden. Es wird eine neue Wallet erstellt.")
+            print("Couldn't load wallet. Creating new one.")
             wallet = Wallet()
     else:
         wallet = Wallet()
 
-    print("\nWallet erstellt!")
-    print("Deine Wallet-Adresse lautet:")
+    print("\nWallet created!")
+    print("Your address:")
     print(wallet.get_address())
-    print("\nSpeichere deinen privaten Schlüssel (bewahre ihn sicher auf!):")
+    print("\nSave your private key:")
     print(wallet.get_private_key())
-    
+
     menu = """
-Optionen:
-1. Transaktion erstellen und senden
-2. Wallet-Adresse anzeigen
-3. Privaten Schlüssel anzeigen
-4. Balance anzeigen
-5. Programm beenden
+Options:
+1. New Transaction
+2. Show Address
+3. Show Private Key
+4. Show Balance
+5. Show Transaction History
+6. Exit
 """
     while True:
         print(menu)
-        choice = input("Deine Auswahl: ").strip()
+        choice = input("Your choice: ").strip()
         if choice == "1":
-            recipient = input("Empfänger-Adresse: ").strip()
-            amount_str = input("Betrag (z.B. 1.0): ").strip()
+            recipient = input("Recipient address: ").strip()
+            amount_str = input("Amount (e.g. 1.0): ").strip()
             try:
                 amount = float(amount_str)
             except ValueError:
-                print("Ungültiger Betrag!")
+                print("Invalid amount!")
                 continue
             tx = wallet.create_transaction(recipient, amount)
-            print("Erzeugte Transaktion:")
+            print("Transaction created:")
             print(json.dumps(tx, indent=4))
             send_transaction_to_node(tx)
         elif choice == "2":
-            print("Deine Wallet-Adresse lautet:")
+            print("Your address:")
             print(wallet.get_address())
         elif choice == "3":
-            print("Dein privater Schlüssel (bewahre ihn sicher auf!):")
+            print("Your private key:")
             print(wallet.get_private_key())
         elif choice == "4":
-            print("Abrufen der Blockchain vom Node...")
+            print("Fetching blockchain...")
             chain_data = get_blockchain_from_node()
             balance = compute_balance(chain_data, wallet.get_address())
-            print(f"Dein aktueller Kontostand beträgt: {balance} Token")
+            print(f"Your balance: {balance} Token")
         elif choice == "5":
-            print("Programm wird beendet.")
+            print("Transaction history is loading...")
+            chain_data = get_blockchain_from_node()
+            history = get_transaction_history(chain_data, wallet.get_address())
+            print_transaction_history(history, wallet.get_address())
+        elif choice == "6":
+            print("Exiting...")
             sys.exit(0)
         else:
-            print("Ungültige Auswahl, bitte erneut versuchen.")
+            print("Invalid choice.")
 
 if __name__ == '__main__':
     main()
