@@ -8,7 +8,7 @@ import os
 import logging
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
 
-# Logging-Konfiguration
+# Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -64,7 +64,7 @@ class Block:
             }, sort_keys=True).encode()
             return hashlib.sha256(block_string).hexdigest()
         except Exception as e:
-            logging.error(f"Fehler beim Hashen des Blocks: {e}")
+            logging.error(f"Error while hashing: {e}")
             return ""
 
 class Blockchain:
@@ -87,32 +87,32 @@ class Blockchain:
         with self.lock:
             try:
                 if block.previous_hash != self.chain[-1].hash:
-                    logging.warning("Block abgelehnt: falscher previous_hash!")
+                    logging.warning("Didn´t accept Block: Wrongh prev_hash!")
                     return False
                 if block.hash != block.calculate_hash():
-                    logging.warning("Block abgelehnt: ungültiger Hash!")
+                    logging.warning("Didn´t accept Block: wrong Hash!")
                     return False
                 if not block.hash.startswith('0' * self.difficulty):
-                    logging.warning("Block abgelehnt: Difficulty nicht erfüllt!")
+                    logging.warning("Didn´t accept Block: Difficulty not reached!")
                     return False
                 for tx in block.transactions:
                     if isinstance(tx, dict):
                         tx_hash = self._tx_hash(tx)
                         if tx_hash in self.seen_tx_hashes:
-                            logging.warning("Block abgelehnt: Doppelte Transaktion erkannt!")
+                            logging.warning("Didn´t accept Block: Multiple Transactions recogmized!")
                             return False
                 self.chain.append(block)
                 for tx in block.transactions:
                     if isinstance(tx, dict):
                         self.seen_tx_hashes.add(self._tx_hash(tx))
                 self.pending_transactions = []
-                logging.info(f"Block {block.index} erfolgreich hinzugefügt. Kettenlänge: {len(self.chain)}")
+                logging.info(f"Block {block.index} added. Blockchain lenght: {len(self.chain)}")
                 previous_block_time = self.last_block_time
                 self.last_block_time = time.time()
                 self.adjust_difficulty(previous_block_time)
                 return True
             except Exception as e:
-                logging.error(f"Fehler beim Hinzufügen des Blocks: {e}")
+                logging.error(f"Error while adding Block: {e}")
                 return False
 
     def add_transaction(self, transaction):
@@ -120,13 +120,13 @@ class Blockchain:
             try:
                 tx_hash = self._tx_hash(transaction)
                 if tx_hash in self.seen_tx_hashes:
-                    logging.warning(f"Transaktion abgelehnt: Replay/Double-Spend erkannt! {transaction}")
+                    logging.warning(f"Transaction not accepted: Replay/Double-Spend recognized! {transaction}")
                     return False
                 self.pending_transactions.append(transaction)
-                logging.info(f"Transaktion wurde zur Pending-Liste hinzugefügt: {transaction}")
+                logging.info(f"Transaction was put to the Pending-List: {transaction}")
                 return True
             except Exception as e:
-                logging.error(f"Fehler beim Hinzufügen der Transaktion: {e}")
+                logging.error(f"Error while adding Transaction: {e}")
                 return False
 
     def adjust_difficulty(self, previous_block_time):
@@ -134,7 +134,7 @@ class Blockchain:
             if not miner_hashrates:
                 return
             avg_hashrate = sum(miner_hashrates.values()) / len(miner_hashrates)
-            logging.info(f"Aktuelle durchschnittliche Hashrate: {avg_hashrate:.2f} MH/s")
+            logging.info(f"Avrage Hashrate: {avg_hashrate:.2f} MH/s")
             if len(self.chain) > 1:
                 actual_time = self.last_block_time - previous_block_time
             else:
@@ -142,12 +142,12 @@ class Blockchain:
             logging.info(f"Zeit seit letztem Block: {actual_time:.2f} s (Ziel: {TARGET_BLOCK_TIME}s)")
             if actual_time < TARGET_BLOCK_TIME * 0.8 and self.difficulty < MAX_DIFFICULTY:
                 self.difficulty += 1
-                logging.info(f"Difficulty erhöht auf {self.difficulty}")
+                logging.info(f"Difficulty rised to {self.difficulty}")
             elif actual_time > TARGET_BLOCK_TIME * 1.2 and self.difficulty > MIN_DIFFICULTY:
                 self.difficulty -= 1
-                logging.info(f"Difficulty verringert auf {self.difficulty}")
+                logging.info(f"Difficulty lowed to {self.difficulty}")
         except Exception as e:
-            logging.error(f"Fehler bei Difficulty-Anpassung: {e}")
+            logging.error(f"Error while changing difficulty: {e}")
 
     def _tx_hash(self, tx):
         try:
@@ -155,7 +155,7 @@ class Blockchain:
             tx_copy.pop("signature", None)
             return hashlib.sha256(json.dumps(tx_copy, sort_keys=True).encode()).hexdigest()
         except Exception as e:
-            logging.error(f"Fehler beim Berechnen des Transaktions-Hash: {e}")
+            logging.error(f"Error while calculating hash: {e}")
             return ""
 
 def compute_balance(address, blockchain):
@@ -180,29 +180,29 @@ def validate_transaction(tx, blockchain):
     required_fields = ["sender", "recipient", "amount", "timestamp", "type"]
     for field in required_fields:
         if field not in tx:
-            logging.warning(f"Transaktion fehlt das Feld: {field}")
+            logging.warning(f"In Transaction field is missing: {field}")
             return False
 
     try:
         amount = float(tx["amount"])
         if amount <= 0:
-            logging.warning("Der Betrag muss größer als 0 sein.")
+            logging.warning("The amount must be bigger than 0.")
             return False
     except Exception:
-        logging.warning("Ungültiger Betrag in der Transaktion.")
+        logging.warning("Invalid amount.")
         return False
 
     if tx["type"] == "reward":
         if tx.get("sender") != "SYSTEM":
-            logging.warning("Reward-Transaktion muss von SYSTEM kommen.")
+            logging.warning("Reward-Transaction must come frome SYSTEM.")
             return False
         if amount != 1:
-            logging.warning("Reward-Transaktion muss genau 1 Token betragen.")
+            logging.warning("Reward-Transaction must be 1 Token.")
             return False
         return True
 
     if "signature" not in tx:
-        logging.warning("Transfer-Transaktionen benötigen eine Signatur.")
+        logging.warning("Transfer-Transakcions need a signature.")
         return False
 
     signature_hex = tx["signature"]
@@ -211,7 +211,7 @@ def validate_transaction(tx, blockchain):
         public_key_bytes = bytes.fromhex(tx["sender"])
         verifying_key = VerifyingKey.from_string(public_key_bytes, curve=SECP256k1)
     except Exception as e:
-        logging.warning(f"Fehler beim Wiederherstellen des öffentlichen Schlüssels: {e}")
+        logging.warning(f"Error while getting key: {e}")
         return False
 
     tx_copy = tx.copy()
@@ -220,15 +220,15 @@ def validate_transaction(tx, blockchain):
     try:
         verifying_key.verify(signature, tx_str.encode())
     except BadSignatureError:
-        logging.warning("Die Signatur der Transaktion ist ungültig.")
+        logging.warning("The signature isn´t valid.")
         return False
     except Exception as e:
-        logging.warning(f"Fehler bei der Signaturüberprüfung: {e}")
+        logging.warning(f"Error while checking Signature: {e}")
         return False
 
     sender_balance = compute_balance(tx["sender"], blockchain)
     if sender_balance < amount:
-        logging.warning(f"Unzureichender Saldo für {tx['sender']}. Aktueller Saldo: {sender_balance}, aber benötigt: {amount}")
+        logging.warning(f"Invalid Balance for {tx['sender']}. Balance: {sender_balance}, but needed: {amount}")
         return False
 
     return True
@@ -243,7 +243,7 @@ def blockchain_server(port, blockchain):
     server.settimeout(CONNECTION_TIMEOUT)
     server.bind(("0.0.0.0", port))
     server.listen(MAX_CONNECTIONS)
-    logging.info(f"Blockchain-Server läuft und hört auf Port {port}... (max. {MAX_CONNECTIONS} Verbindungen)")
+    logging.info(f"Blockchain-Server is running and port = {port}... (max. {MAX_CONNECTIONS} Verbindungen)")
 
     while True:
         try:
@@ -254,8 +254,7 @@ def blockchain_server(port, blockchain):
                 if not data:
                     conn.close()
                     continue
-
-                # Miner-Registrierung bleibt wie gehabt
+                    
                 if data.startswith("GET_MINERID"):
                     try:
                         with miner_id_lock:
@@ -269,9 +268,9 @@ def blockchain_server(port, blockchain):
                         conn.sendall(response.encode())
                         time.sleep(0.1)
                     except Exception as e:
-                        logging.error(f"Fehler bei der Vergabe der Miner-ID: {e}")
+                        logging.error(f"Error while giving MinerID: {e}")
 
-                # Authentifizierte GETs
+                
                 elif data.startswith("GET_BLOCKINDEX:"):
                     parts = data.strip().split(":")
                     if len(parts) == 3:
@@ -303,19 +302,19 @@ def blockchain_server(port, blockchain):
                         time.sleep(0.1)
 
                 elif data.startswith("GET_MINERS:"):
-                    # Optional: Authentifizierung auch hier möglich
+                    
                     conn.sendall(json.dumps(list(active_miners)).encode())
                     time.sleep(0.1)
 
                 elif data.startswith("NEW_BLOCK:"):
-                    # Format: NEW_BLOCK:<miner_id>:<token>:<json>
+                    
                     parts = data.split(":", 3)
                     if len(parts) != 4:
                         conn.sendall(b"BLOCK_REJECTED")
                         continue
                     _, miner_id, token, block_json = parts
                     if not check_token(miner_id, token):
-                        logging.warning("Block abgelehnt: Ungültiger Token!")
+                        logging.warning("Block invalid: Invalid Token")
                         conn.sendall(b"BLOCK_REJECTED")
                         continue
                     block_data = json.loads(block_json)
@@ -338,11 +337,11 @@ def blockchain_server(port, blockchain):
                         tx_data = json.loads(data.split("NEW_TX:")[1])
                         if validate_transaction(tx_data, blockchain):
                             blockchain.add_transaction(tx_data)
-                            logging.info(f"Transaktion von {addr} empfangen und validiert.")
+                            logging.info(f"Transaction from {addr} valid.")
                         else:
-                            logging.warning(f"Ungültige Transaktion von {addr}: {tx_data}")
+                            logging.warning(f"Invalid Transaction from {addr}: {tx_data}")
                     except Exception as e:
-                        logging.error(f"Fehler beim Verarbeiten der Transaktion: {e}")
+                        logging.error(f"Error while validation Transaction: {e}")
 
                 elif data.startswith("GET_CHAIN:"):
                     try:
@@ -354,7 +353,7 @@ def blockchain_server(port, blockchain):
                         conn.sendall(response.encode())
                         time.sleep(0.1)
                     except Exception as e:
-                        logging.error(f"Fehler beim Senden der Blockchain: {e}")
+                        logging.error(f"Error while sending chain: {e}")
 
                 elif data.startswith("REPORT_HASHRATE:"):
                     # Format: REPORT_HASHRATE:<miner_id>:<token>:<hashrate>
@@ -362,12 +361,12 @@ def blockchain_server(port, blockchain):
                     if len(parts) == 4:
                         _, miner_id, token, hashrate = parts
                         if not check_token(miner_id, token):
-                            logging.warning("Hashrate abgelehnt: Ungültiger Token!")
+                            logging.warning("Invalid Hashrate: Invalid Token!")
                             continue
                         miner_hashrates[int(miner_id)] = float(hashrate)
-                        logging.info(f"Hashrate von Miner {miner_id} aktualisiert: {float(hashrate):.2f} MH/s")
+                        logging.info(f"Hashrate from Miner {miner_id} aktualisiert: {float(hashrate):.2f} MH/s")
             except Exception as e:
-                logging.error(f"Fehler bei der Verarbeitung der Verbindung von {addr}: {e}")
+                logging.error(f"Error while connectiong to miner {addr}: {e}")
             finally:
                 try:
                     conn.close()
@@ -379,20 +378,20 @@ def blockchain_server(port, blockchain):
             logging.error(f"Fehler im Hauptserver-Loop: {e}")
 
 def admin_console(blockchain):
-    print("Admin-Konsole gestartet. Sende Coins mit: send <empfänger> <betrag>")
+    print("Admin console running. Send coins with: send <reciever> <amount>")
     while True:
         try:
             cmd = input("admin> ").strip()
             if cmd.startswith("send "):
                 parts = cmd.split()
                 if len(parts) != 3:
-                    print("Syntax: send <empfänger> <betrag>")
+                    print("Syntax: send <reciever> <amount>")
                     continue
                 recipient = parts[1]
                 try:
                     amount = float(parts[2])
                 except Exception:
-                    print("Betrag muss eine Zahl sein.")
+                    print("Amount must be a Number.")
                     continue
                 tx = {
                     "sender": "SYSTEM",
@@ -404,15 +403,15 @@ def admin_console(blockchain):
                 with blockchain.lock:
                     blockchain.add_transaction(tx)
                 print(f"Transaktion: SYSTEM -> {recipient} ({amount}) wurde hinzugefügt.")
-                logging.info(f"Admin-Transaktion: SYSTEM -> {recipient} ({amount})")
+                logging.info(f"Admin-Transaction: SYSTEM -> {recipient} ({amount})")
             elif cmd in ("exit", "quit"):
-                print("Admin-Konsole wird beendet.")
+                print("Admin-Console is shutting down.")
                 break
             else:
-                print("Unbekannter Befehl.")
+                print("Invalid action.")
         except Exception as e:
-            print(f"Fehler in der Admin-Konsole: {e}")
-            logging.error(f"Fehler in der Admin-Konsole: {e}")
+            print(f"Error in Admin Console: {e}")
+            logging.error(f"Error in Admin Console: {e}")
 
 if __name__ == '__main__':
     blockchain = Blockchain(difficulty=5)
@@ -428,5 +427,5 @@ if __name__ == '__main__':
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Server wird beendet.")
-        logging.info("Server wird beendet.")
+        print("Closing Server.")
+        logging.info("Closing Server.")
