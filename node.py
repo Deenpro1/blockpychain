@@ -10,7 +10,7 @@ from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
 import uuid
 
 ADMIN_PASSWORD = uuid.uuid4().hex
-print(f"Admin-Passwort: {ADMIN_PASSWORD}")
+print(f"Admin-Password: {ADMIN_PASSWORD}")
 
 # Logging
 logging.basicConfig(
