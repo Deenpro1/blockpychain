@@ -47,9 +47,6 @@ A: Delete the `admin_password.txt` file (if implemented) or restart the node to 
 **Q: How do I connect a wallet or explorer?**  
 A: Use `wallet.py` or `block_explorer.py` to interact with the node. Make sure the node is running and reachable.
 
-**Q: Can I run multiple nodes?**  
-A: Yes, but you must configure each node to use a different port.
-
 ---
 
 For further questions, please check the code comments or open an issue.
