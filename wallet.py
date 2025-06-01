@@ -93,7 +93,7 @@ def print_transaction_history(history, my_address):
         recipient = "My Adress" if tx.get("recipient") == my_address else tx.get("recipient")
         amount = tx.get("amount")
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tx.get("timestamp", 0)))
-        print(f"{i}. {timestamp} | From: {sender} | TO: {recipient} | Amount: {amount}")
+        print(f"{i}. {timestamp} | From: {sender} | TO: {recipient} | Amount: {float(amount):.8f}")
 
 def main():
     print("Welcome to your Wallet!")
@@ -148,7 +148,7 @@ Options:
             print("Fetching blockchain...")
             chain_data = get_blockchain_from_node()
             balance = compute_balance(chain_data, wallet.get_address())
-            print(f"Your balance: {balance} Token")
+            print(f"Your balance: {balance:.8f} Token")
         elif choice == "5":
             print("Transaction history is loading...")
             chain_data = get_blockchain_from_node()
