@@ -31,7 +31,7 @@ def get_miners():
             data = s.recv(4096)
             return json.loads(data.decode())
     except Exception as e:
-        print("Fehler beim Abrufen der Miner-Liste:", e)
+        print("Error while getting miner list:", e)
         return []
 
 def get_address_info(address):
@@ -47,7 +47,7 @@ def get_address_info(address):
                 data += part
             return json.loads(data.decode())
     except Exception as e:
-        print("Fehler beim Abrufen der Adressdaten:", e)
+        print("Eror while getting data:", e)
         return {"address": address, "balance": 0.0, "transactions": []}
 
 @app.route("/")
@@ -85,7 +85,7 @@ def latest_block():
             else:
                 return jsonify({})
     except Exception as e:
-        print("Fehler beim Abrufen des neuesten Blocks:", e)
+        print("Error while getting Blocks:", e)
         return jsonify({})
 
 if __name__ == "__main__":
