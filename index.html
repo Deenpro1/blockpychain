@@ -86,39 +86,39 @@
     } catch (error) {
       console.error("Fehler beim Laden der Miner:", error);
     }
+  }
+
   async function loadLatestBlock() {
-  try {
-    const response = await fetch("/latest_block");
-    const block = await response.json();
-    const card = document.getElementById("latestBlockCard");
-    const content = document.getElementById("latestBlockContent");
-    if (block && block.index !== undefined) {
-      card.style.display = "block";
-      content.innerHTML = `
-        <b>Index:</b> ${block.index}<br>
-        <b>Timestamp:</b> ${new Date(block.timestamp * 1000).toLocaleString()}<br>
-        <b>Hash:</b> <span style="font-family:monospace">${block.hash}</span><br>
-        <b>Transaktionen:</b> ${block.transactions.length}
-      `;
-    } else {
-      card.style.display = "none";
+    try {
+      const response = await fetch("/latest_block");
+      const block = await response.json();
+      const card = document.getElementById("latestBlockCard");
+      const content = document.getElementById("latestBlockContent");
+      if (block && block.index !== undefined) {
+        card.style.display = "block";
+        content.innerHTML = `
+          <b>Index:</b> ${block.index}<br>
+          <b>Timestamp:</b> ${new Date(block.timestamp * 1000).toLocaleString()}<br>
+          <b>Hash:</b> <span style="font-family:monospace">${block.hash}</span><br>
+          <b>Transaktionen:</b> ${block.transactions.length}
+        `;
+      } else {
+        card.style.display = "none";
+      }
+    } catch (error) {
+      console.error("Fehler beim Laden des neuesten Blocks:", error);
     }
-  } catch (error) {
-    console.error("Fehler beim Laden des neuesten Blocks:", error);
   }
-}
 
-// Im window.onload und im setInterval ergänzen:
-window.onload = function() {
-  loadBlocks();
-  loadMiners();
-  loadLatestBlock();
-};
-setInterval(loadBlocks, 10000);
-setInterval(loadMiners, 10000);
-setInterval(loadLatestBlock, 10000);
-
-  }
+  // Im window.onload und im setInterval ergänzen:
+  window.onload = function() {
+    loadBlocks();
+    loadMiners();
+    loadLatestBlock();
+  };
+  setInterval(loadBlocks, 10000);
+  setInterval(loadMiners, 10000);
+  setInterval(loadLatestBlock, 10000);
 
   // Blöcke laden
   async function loadBlocks() {
