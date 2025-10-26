@@ -138,14 +138,14 @@ class Blockchain:
             if not miner_hashrates:
                 return
             avg_hashrate = sum(miner_hashrates.values()) / len(miner_hashrates)
-            logging.info(f"Avrage Hashrate: {avg_hashrate:.2f} MH/s")
+            logging.info(f"Avrage Hashrate: {avg_hashrate:.1f} KH/s")
             if len(self.chain) > 1:
                 actual_time = self.last_block_time - previous_block_time
             else:
                 actual_time = TARGET_BLOCK_TIME
             logging.info(f"Zeit seit letztem Block: {actual_time:.2f} s (Ziel: {TARGET_BLOCK_TIME}s)")
             if actual_time < TARGET_BLOCK_TIME * 0.8 and self.difficulty < MAX_DIFFICULTY:
-                self.difficulty += 1
+                self.difficulty += 2
                 logging.info(f"Difficulty rised to {self.difficulty}")
             elif actual_time > TARGET_BLOCK_TIME * 1.2 and self.difficulty > MIN_DIFFICULTY:
                 self.difficulty -= 1
@@ -443,5 +443,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Closing Server.")
         logging.info("Closing Server.")
+
 
 
