@@ -28,9 +28,9 @@ active_miners = set()
 miner_hashrates = {}
 miner_tokens = {}
 TOKEN_FILE = "miner_tokens.json"
-TARGET_BLOCK_TIME = 25
-MIN_DIFFICULTY = 1
-MAX_DIFFICULTY = 10
+TARGET_BLOCK_TIME = 100
+MIN_DIFFICULTY = 5
+MAX_DIFFICULTY = 100
 MAX_CONNECTIONS = 20
 CONNECTION_TIMEOUT = 10
 
@@ -443,3 +443,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Closing Server.")
         logging.info("Closing Server.")
+
